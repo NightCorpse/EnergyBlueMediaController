@@ -185,6 +185,7 @@ PlasmoidItem {
                 return bubbleBtn.normalSource
             }
             smooth: true
+            mipmap: true
 
             transform: [
                 Translate {
@@ -218,8 +219,10 @@ PlasmoidItem {
         implicitHeight: 381
         Layout.preferredWidth: 423
         Layout.preferredHeight: 381
-        Layout.minimumWidth: 423
-        Layout.minimumHeight: 381
+        Layout.minimumWidth: 200
+        Layout.minimumHeight: 180
+
+        readonly property real scaleFactor: Math.min(width / 423, height / 381)
 
         // Root container of the 423x381 physical MP3 gadget
         Item {
@@ -227,6 +230,8 @@ PlasmoidItem {
             anchors.centerIn: parent
             width: 423
             height: 381
+            scale: fullRep.scaleFactor
+            transformOrigin: Item.Center
 
             // Base Chassis (Carcaça)
             Image {
@@ -441,6 +446,7 @@ PlasmoidItem {
                         height: 20
                         source: Qt.resolvedUrl("../assets/seek_slider_1.png")
                         smooth: true
+                        mipmap: true
                     }
                 }
 
@@ -461,6 +467,7 @@ PlasmoidItem {
                         return Qt.resolvedUrl("../assets/seek_thumb_no_1.png")
                     }
                     smooth: true
+                    mipmap: true
                 }
 
                 // Interactive seek MouseArea
@@ -665,6 +672,7 @@ PlasmoidItem {
                         return Qt.resolvedUrl("../assets/m_mute_no_1.png")
                     }
                     smooth: true
+                    mipmap: true
 
                     transform: [
                         Translate {
@@ -716,6 +724,7 @@ PlasmoidItem {
                         return Qt.resolvedUrl("../assets/eq_xfade_no_1.png")
                     }
                     smooth: true
+                    mipmap: true
 
                     transform: [
                         Translate {
@@ -780,6 +789,7 @@ PlasmoidItem {
                         return Qt.resolvedUrl("../assets/pl_rep_no_1.png")
                     }
                     smooth: true
+                    mipmap: true
 
                     transform: [
                         Translate {
