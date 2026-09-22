@@ -108,6 +108,61 @@ PlasmoidItem {
         }
     }
 
+    // Reusable Skeuomorphic Bubble Button (42x39px)
+    component BubbleButton: Item {
+        id: bubbleBtn
+        width: 42
+        height: 39
+        property url normalSource
+        property url hoverSource
+        property url downSource
+        property url disabledSource
+        property bool isEnabled: true
+        signal clicked()
+
+        Image {
+            id: btnImg
+            anchors.fill: parent
+            source: {
+                if (!bubbleBtn.isEnabled && bubbleBtn.disabledSource != "") {
+                    return bubbleBtn.disabledSource
+                }
+                if (btnMouseArea.pressed) {
+                    return bubbleBtn.downSource
+                }
+                if (btnMouseArea.containsMouse) {
+                    return bubbleBtn.hoverSource
+                }
+                return bubbleBtn.normalSource
+            }
+            smooth: true
+
+            transform: [
+                Translate {
+                    y: btnMouseArea.pressed ? 2 : 0
+                    Behavior on y { NumberAnimation { duration: 60 } }
+                },
+                Scale {
+                    origin.x: 21
+                    origin.y: 20
+                    xScale: btnMouseArea.pressed ? 0.97 : 1.0
+                    yScale: btnMouseArea.pressed ? 0.97 : 1.0
+                    Behavior on xScale { NumberAnimation { duration: 60 } }
+                    Behavior on yScale { NumberAnimation { duration: 60 } }
+                }
+            ]
+        }
+
+        MouseArea {
+            id: btnMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            enabled: bubbleBtn.isEnabled
+            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onClicked: bubbleBtn.clicked()
+        }
+    }
+
     fullRepresentation: Item {
         id: fullRep
         implicitWidth: 423
@@ -117,230 +172,312 @@ PlasmoidItem {
         Layout.minimumWidth: 423
         Layout.minimumHeight: 381
 
-        // Base Chassis (Carcaça)
-        Image {
-            id: deviceBody
+        // Root container of the 423x381 physical MP3 gadget
+        Item {
+            id: widgetContainer
             anchors.centerIn: parent
             width: 423
             height: 381
-            source: Qt.resolvedUrl("../assets/main_back_1_transparent.png")
-            fillMode: Image.PreserveAspectFit
-            smooth: true
-            mipmap: true
-        }
 
-        // Title Display Area right below the "TITLE" label
-        Item {
-            id: titleContainer
-            x: 93
-            y: 147
-            width: 182
-            height: 22
-            clip: true
-
-            Text {
-                id: titleText
-                text: root.fullDisplayTitle
-                visible: root.hasMedia
-                color: "#ffffff"
-                font.family: "Tahoma, Segoe UI, sans-serif"
-                font.pixelSize: 11
-                font.bold: true
-                style: Text.Outline
-                styleColor: "#001a33"
-                anchors.verticalCenter: parent.verticalCenter
-
-                readonly property bool shouldScroll: contentWidth > titleContainer.width
-
-                x: shouldScroll ? marqueeAnimState.currentX : 0
-
-                onTextChanged: {
-                    marqueeAnimState.currentX = 0
-                }
-
-                QtObject {
-                    id: marqueeAnimState
-                    property real currentX: 0
-
-                    SequentialAnimation on currentX {
-                        running: titleText.shouldScroll && root.hasMedia
-                        loops: Animation.Infinite
-
-                        PauseAnimation {
-                            duration: 1800
-                        }
-
-                        NumberAnimation {
-                            from: 0
-                            to: -(titleText.contentWidth + 24)
-                            duration: Math.max(2500, (titleText.contentWidth + 24) * 25)
-                            easing.type: Easing.Linear
-                        }
-
-                        PropertyAction {
-                            value: titleContainer.width
-                        }
-
-                        NumberAnimation {
-                            from: titleContainer.width
-                            to: 0
-                            duration: Math.max(1200, titleContainer.width * 25)
-                            easing.type: Easing.Linear
-                        }
-                    }
-                }
-            }
-        }
-
-        // 7-Segment Main Clock: TIME (left: 86, top: 173)
-        Item {
-            id: timeDisplay
-            x: 86
-            y: 173
-            width: 95
-            height: 29
-            visible: root.hasMedia
-
-            LargeDigit {
-                x: 18
-                value: root.elapsedM1
-            }
-            LargeDigit {
-                x: 36
-                value: root.elapsedM2
-            }
+            // Base Chassis (Carcaça)
             Image {
-                x: 50
-                source: Qt.resolvedUrl("../assets/time_sign_1.png")
-                smooth: false
+                id: deviceBody
+                anchors.fill: parent
+                source: Qt.resolvedUrl("../assets/main_back_1_transparent.png")
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+                mipmap: true
             }
-            LargeDigit {
-                x: 59
-                value: root.elapsedS1
-            }
-            LargeDigit {
-                x: 77
-                value: root.elapsedS2
-            }
-        }
 
-        // 7-Segment Total Duration Clock: TOTAL (left: 190, top: 187)
-        Item {
-            id: dtimeDisplay
-            x: 190
-            y: 187
-            width: 35
-            height: 13
-            visible: root.hasMedia
-
-            SmallDigit {
-                x: 0
-                value: root.totalM1
-            }
-            SmallDigit {
-                x: 8
-                value: root.totalM2
-            }
-            Image {
-                x: 15
-                source: Qt.resolvedUrl("../assets/dtime_sign_1.png")
-                smooth: false
-            }
-            SmallDigit {
-                x: 18
-                value: root.totalS1
-            }
-            SmallDigit {
-                x: 26
-                value: root.totalS2
-            }
-        }
-
-        // Seekbar / Timeline (left: 70, top: 234, width: 175, height: 20)
-        Item {
-            id: seekContainer
-            x: 70
-            y: 234
-            width: 175
-            height: 20
-            visible: root.hasMedia
-
-            // Green progress fill: clipped dynamically to thumb position
+            // Title Display Area right below the "TITLE" label
             Item {
-                id: seekFillClip
-                x: 0
-                y: 0
-                height: 20
-                width: seekThumb.x > 0 ? Math.min(175, seekThumb.x + 22) : 0
+                id: titleContainer
+                x: 93
+                y: 147
+                width: 182
+                height: 22
                 clip: true
 
-                Image {
-                    x: 0
-                    y: 0
-                    width: 175
-                    height: 20
-                    source: Qt.resolvedUrl("../assets/seek_slider_1.png")
-                    smooth: true
-                }
-            }
+                Text {
+                    id: titleText
+                    text: root.fullDisplayTitle
+                    visible: root.hasMedia
+                    color: "#ffffff"
+                    font.family: "Tahoma, Segoe UI, sans-serif"
+                    font.pixelSize: 11
+                    font.bold: true
+                    style: Text.Outline
+                    styleColor: "#001a33"
+                    anchors.verticalCenter: parent.verticalCenter
 
-            // Slider thumb (width: 44, height: 20)
-            Image {
-                id: seekThumb
-                x: seekMouseArea.pressed ? x : (root.totalSeconds > 0 ? Math.round((root.currentSeconds / root.totalSeconds) * 131) : 0)
-                y: 0
-                width: 44
-                height: 20
-                source: {
-                    if (seekMouseArea.pressed) {
-                        return Qt.resolvedUrl("../assets/seek_thumb_do_1.png")
+                    readonly property bool shouldScroll: contentWidth > titleContainer.width
+
+                    x: shouldScroll ? marqueeAnimState.currentX : 0
+
+                    onTextChanged: {
+                        marqueeAnimState.currentX = 0
                     }
-                    if (seekMouseArea.containsMouse) {
-                        return Qt.resolvedUrl("../assets/seek_thumb_hov_1.png")
-                    }
-                    return Qt.resolvedUrl("../assets/seek_thumb_no_1.png")
-                }
-                smooth: true
-            }
 
-            // Interactive seek MouseArea
-            MouseArea {
-                id: seekMouseArea
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: pressed ? Qt.ClosedHandCursor : (containsMouse ? Qt.PointingHandCursor : Qt.ArrowCursor)
+                    QtObject {
+                        id: marqueeAnimState
+                        property real currentX: 0
 
-                drag.target: seekThumb
-                drag.axis: Drag.XAxis
-                drag.minimumX: 0
-                drag.maximumX: 131
+                        SequentialAnimation on currentX {
+                            running: titleText.shouldScroll && root.hasMedia
+                            loops: Animation.Infinite
 
-                function seekTo(targetMouseX) {
-                    const clampedX = Math.max(0, Math.min(131, targetMouseX - 22));
-                    seekThumb.x = clampedX;
-                    if (root.totalSeconds > 0) {
-                        const ratio = clampedX / 131.0;
-                        const newSecs = ratio * root.totalSeconds;
-                        root.currentSeconds = newSecs;
-                        if (root.player) {
-                            root.player.position = Math.round(newSecs * 1000000);
-                            root.player.updatePosition();
+                            PauseAnimation {
+                                duration: 1800
+                            }
+
+                            NumberAnimation {
+                                from: 0
+                                to: -(titleText.contentWidth + 24)
+                                duration: Math.max(2500, (titleText.contentWidth + 24) * 25)
+                                easing.type: Easing.Linear
+                            }
+
+                            PropertyAction {
+                                value: titleContainer.width
+                            }
+
+                            NumberAnimation {
+                                from: titleContainer.width
+                                to: 0
+                                duration: Math.max(1200, titleContainer.width * 25)
+                                easing.type: Easing.Linear
+                            }
                         }
                     }
                 }
+            }
 
-                onPressed: function(mouse) {
-                    seekTo(mouse.x);
+            // 7-Segment Main Clock: TIME (left: 86, top: 173)
+            Item {
+                id: timeDisplay
+                x: 86
+                y: 173
+                width: 95
+                height: 29
+                visible: root.hasMedia
+
+                LargeDigit {
+                    x: 18
+                    value: root.elapsedM1
+                }
+                LargeDigit {
+                    x: 36
+                    value: root.elapsedM2
+                }
+                Image {
+                    x: 50
+                    source: Qt.resolvedUrl("../assets/time_sign_1.png")
+                    smooth: false
+                }
+                LargeDigit {
+                    x: 59
+                    value: root.elapsedS1
+                }
+                LargeDigit {
+                    x: 77
+                    value: root.elapsedS2
+                }
+            }
+
+            // 7-Segment Total Duration Clock: TOTAL (left: 190, top: 187)
+            Item {
+                id: dtimeDisplay
+                x: 190
+                y: 187
+                width: 35
+                height: 13
+                visible: root.hasMedia
+
+                SmallDigit {
+                    x: 0
+                    value: root.totalM1
+                }
+                SmallDigit {
+                    x: 8
+                    value: root.totalM2
+                }
+                Image {
+                    x: 15
+                    source: Qt.resolvedUrl("../assets/dtime_sign_1.png")
+                    smooth: false
+                }
+                SmallDigit {
+                    x: 18
+                    value: root.totalS1
+                }
+                SmallDigit {
+                    x: 26
+                    value: root.totalS2
+                }
+            }
+
+            // Seekbar / Timeline (left: 70, top: 234, width: 175, height: 20)
+            Item {
+                id: seekContainer
+                x: 70
+                y: 234
+                width: 175
+                height: 20
+                visible: root.hasMedia
+
+                // Green progress fill: clipped dynamically to thumb position
+                Item {
+                    id: seekFillClip
+                    x: 0
+                    y: 0
+                    height: 20
+                    width: seekThumb.x > 0 ? Math.min(175, seekThumb.x + 22) : 0
+                    clip: true
+
+                    Image {
+                        x: 0
+                        y: 0
+                        width: 175
+                        height: 20
+                        source: Qt.resolvedUrl("../assets/seek_slider_1.png")
+                        smooth: true
+                    }
                 }
 
-                onPositionChanged: function(mouse) {
-                    if (pressed) {
+                // Slider thumb (width: 44, height: 20)
+                Image {
+                    id: seekThumb
+                    x: seekMouseArea.pressed ? x : (root.totalSeconds > 0 ? Math.round((root.currentSeconds / root.totalSeconds) * 131) : 0)
+                    y: 0
+                    width: 44
+                    height: 20
+                    source: {
+                        if (seekMouseArea.pressed) {
+                            return Qt.resolvedUrl("../assets/seek_thumb_do_1.png")
+                        }
+                        if (seekMouseArea.containsMouse) {
+                            return Qt.resolvedUrl("../assets/seek_thumb_hov_1.png")
+                        }
+                        return Qt.resolvedUrl("../assets/seek_thumb_no_1.png")
+                    }
+                    smooth: true
+                }
+
+                // Interactive seek MouseArea
+                MouseArea {
+                    id: seekMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: pressed ? Qt.ClosedHandCursor : (containsMouse ? Qt.PointingHandCursor : Qt.ArrowCursor)
+
+                    drag.target: seekThumb
+                    drag.axis: Drag.XAxis
+                    drag.minimumX: 0
+                    drag.maximumX: 131
+
+                    function seekTo(targetMouseX) {
+                        const clampedX = Math.max(0, Math.min(131, targetMouseX - 22));
+                        seekThumb.x = clampedX;
+                        if (root.totalSeconds > 0) {
+                            const ratio = clampedX / 131.0;
+                            const newSecs = ratio * root.totalSeconds;
+                            root.currentSeconds = newSecs;
+                            if (root.player) {
+                                root.player.position = Math.round(newSecs * 1000000);
+                                root.player.updatePosition();
+                            }
+                        }
+                    }
+
+                    onPressed: function(mouse) {
+                        seekTo(mouse.x);
+                    }
+
+                    onPositionChanged: function(mouse) {
+                        if (pressed) {
+                            seekTo(mouse.x);
+                        }
+                    }
+
+                    onReleased: function(mouse) {
                         seekTo(mouse.x);
                     }
                 }
+            }
 
-                onReleased: function(mouse) {
-                    seekTo(mouse.x);
+            // --- The 4 Skeuomorphic Bubble Bottom Buttons (y: 262) ---
+
+            // 1. Play / Pause Button (left: 73, top: 262)
+            BubbleButton {
+                id: btnPlayPause
+                x: 73
+                y: 262
+                normalSource: root.isPlaying
+                    ? Qt.resolvedUrl("../assets/m_pause_no_1.png")
+                    : Qt.resolvedUrl("../assets/m_play_no_1.png")
+                hoverSource: root.isPlaying
+                    ? Qt.resolvedUrl("../assets/m_pause_hov_1.png")
+                    : Qt.resolvedUrl("../assets/m_play_hov_1.png")
+                downSource: root.isPlaying
+                    ? Qt.resolvedUrl("../assets/m_pause_do_1.png")
+                    : Qt.resolvedUrl("../assets/m_play_do_1.png")
+                disabledSource: Qt.resolvedUrl("../assets/m_play_dis_1.png")
+                isEnabled: !!root.player
+                onClicked: {
+                    if (root.player) {
+                        root.player.PlayPause();
+                    }
+                }
+            }
+
+            // 2. Stop Button (left: 119, top: 262)
+            BubbleButton {
+                id: btnStop
+                x: 119
+                y: 262
+                normalSource: Qt.resolvedUrl("../assets/m_stop_no_1.png")
+                hoverSource: Qt.resolvedUrl("../assets/m_stop_hov_1.png")
+                downSource: Qt.resolvedUrl("../assets/m_stop_do_1.png")
+                disabledSource: Qt.resolvedUrl("../assets/m_stop_dis_1.png")
+                isEnabled: root.hasMedia
+                onClicked: {
+                    if (root.player) {
+                        root.player.Stop();
+                    }
+                }
+            }
+
+            // 3. Previous Track Button (left: 165, top: 262)
+            BubbleButton {
+                id: btnPrev
+                x: 165
+                y: 262
+                normalSource: Qt.resolvedUrl("../assets/m_prev_no_1.png")
+                hoverSource: Qt.resolvedUrl("../assets/m_prev_hov_1.png")
+                downSource: Qt.resolvedUrl("../assets/m_prev_do_1.png")
+                disabledSource: Qt.resolvedUrl("../assets/m_prev_dis_1.png")
+                isEnabled: root.hasMedia
+                onClicked: {
+                    if (root.player) {
+                        root.player.Previous();
+                    }
+                }
+            }
+
+            // 4. Next Track Button (left: 211, top: 262)
+            BubbleButton {
+                id: btnNext
+                x: 211
+                y: 262
+                normalSource: Qt.resolvedUrl("../assets/m_next_no_1.png")
+                hoverSource: Qt.resolvedUrl("../assets/m_next_hov_1.png")
+                downSource: Qt.resolvedUrl("../assets/m_next_do_1.png")
+                disabledSource: Qt.resolvedUrl("../assets/m_next_dis_1.png")
+                isEnabled: root.hasMedia
+                onClicked: {
+                    if (root.player) {
+                        root.player.Next();
+                    }
                 }
             }
         }
