@@ -48,6 +48,43 @@ PlasmoidItem {
     readonly property int totalS1: Math.floor(totalSecs / 10) % 10
     readonly property int totalS2: totalSecs % 10
 
+    // Volume & Mute State
+    property bool isMuted: false
+    property real savedVolume: 0.7
+    readonly property real playerVolume: player ? Math.max(0.0, Math.min(1.0, player.volume)) : 0.7
+    readonly property real displayVolume: isMuted ? savedVolume : playerVolume
+    readonly property int volumeFrame: Math.round(displayVolume * 20)
+
+    onPlayerVolumeChanged: {
+        if (playerVolume > 0.02 && !isMuted) {
+            savedVolume = playerVolume;
+        }
+    }
+
+    function adjustVolume(delta) {
+        if (!player) return;
+        if (isMuted) {
+            isMuted = false;
+        }
+        const newVol = Math.max(0.0, Math.min(1.0, (player.volume || savedVolume) + delta));
+        player.volume = newVol;
+        savedVolume = newVol;
+    }
+
+    function toggleMute() {
+        if (!player) return;
+        if (!isMuted) {
+            if (player.volume > 0.02) {
+                savedVolume = player.volume;
+            }
+            isMuted = true;
+            player.volume = 0.0;
+        } else {
+            isMuted = false;
+            player.volume = (savedVolume > 0.05) ? savedVolume : 0.5;
+        }
+    }
+
     // 1-second position ticker during active playback
     Timer {
         id: positionTimer
@@ -478,6 +515,109 @@ PlasmoidItem {
                     if (root.player) {
                         root.player.Next();
                     }
+                }
+            }
+
+            // --- Rotary Volume Knob (left: 255, top: 209, size: 76x76) ---
+            Item {
+                id: volumeKnob
+                x: 255
+                y: 209
+                width: 76
+                height: 76
+                clip: true
+
+                Image {
+                    id: knobSprite
+                    x: -root.volumeFrame * 76
+                    y: 0
+                    width: 1596
+                    height: 76
+                    source: Qt.resolvedUrl("../assets/volume_1.png")
+                    smooth: true
+                }
+
+                MouseArea {
+                    id: knobMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.SizeVerCursor
+
+                    property real startY: 0
+                    property real startVol: 0
+
+                    onWheel: function(wheel) {
+                        const step = wheel.angleDelta.y > 0 ? 0.05 : -0.05;
+                        root.adjustVolume(step);
+                    }
+
+                    onPressed: function(mouse) {
+                        startY = mouse.y;
+                        startVol = root.displayVolume;
+                    }
+
+                    onPositionChanged: function(mouse) {
+                        if (pressed) {
+                            const deltaY = startY - mouse.y;
+                            const volDelta = deltaY / 120.0;
+                            const newVol = Math.max(0.0, Math.min(1.0, startVol + volDelta));
+                            if (root.player) {
+                                if (root.isMuted) root.isMuted = false;
+                                root.player.volume = newVol;
+                                root.savedVolume = newVol;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // --- Mute Button (left: 319, top: 192, size: 29x29) ---
+            Item {
+                id: btnMute
+                x: 319
+                y: 192
+                width: 29
+                height: 29
+
+                Image {
+                    id: muteImg
+                    anchors.fill: parent
+                    source: {
+                        if (root.isMuted) {
+                            return Qt.resolvedUrl("../assets/m_mute_do_1.png")
+                        }
+                        if (muteMouseArea.pressed) {
+                            return Qt.resolvedUrl("../assets/m_mute_do_1.png")
+                        }
+                        if (muteMouseArea.containsMouse) {
+                            return Qt.resolvedUrl("../assets/m_mute_hov_1.png")
+                        }
+                        return Qt.resolvedUrl("../assets/m_mute_no_1.png")
+                    }
+                    smooth: true
+
+                    transform: [
+                        Translate {
+                            y: (muteMouseArea.pressed || root.isMuted) ? 1.5 : 0
+                            Behavior on y { NumberAnimation { duration: 60 } }
+                        },
+                        Scale {
+                            origin.x: 14
+                            origin.y: 14
+                            xScale: (muteMouseArea.pressed || root.isMuted) ? 0.96 : 1.0
+                            yScale: (muteMouseArea.pressed || root.isMuted) ? 0.96 : 1.0
+                            Behavior on xScale { NumberAnimation { duration: 60 } }
+                            Behavior on yScale { NumberAnimation { duration: 60 } }
+                        }
+                    ]
+                }
+
+                MouseArea {
+                    id: muteMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.toggleMute()
                 }
             }
         }
