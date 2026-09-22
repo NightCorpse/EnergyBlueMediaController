@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Qt5Compat.GraphicalEffects as GE
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.private.mpris as Mpris
@@ -20,6 +21,7 @@ PlasmoidItem {
     readonly property bool isPlaying: player?.playbackStatus === Mpris.PlaybackStatus.Playing
     readonly property string currentTitle: player?.track ?? ""
     readonly property string currentArtist: player?.artist ?? ""
+    readonly property string albumArtUrl: (hasMedia && player && player.artUrl) ? player.artUrl.toString() : ""
     readonly property string fullDisplayTitle: {
         if (!hasMedia) return ""
         if (currentArtist.length > 0) {
@@ -224,6 +226,57 @@ PlasmoidItem {
                 fillMode: Image.PreserveAspectFit
                 smooth: true
                 mipmap: true
+            }
+
+            // Ambient Glass Album Art (Curved glass integration with mask)
+            Item {
+                id: ambientScreenArea
+                x: 66
+                y: 90
+                width: 243
+                height: 129
+                visible: root.hasMedia && root.albumArtUrl.length > 0
+
+                Item {
+                    id: ambientSource
+                    anchors.fill: parent
+                    visible: false
+
+                    Image {
+                        id: coverImage
+                        anchors.fill: parent
+                        source: root.albumArtUrl
+                        fillMode: Image.PreserveAspectCrop
+                        smooth: true
+                        asynchronous: true
+                    }
+
+                    // Contrast gradient over bottom-left to protect TITLE and 7-segment clock
+                    Rectangle {
+                        anchors.fill: parent
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: Qt.rgba(0.01, 0.1, 0.28, 0.80) }
+                            GradientStop { position: 0.55; color: Qt.rgba(0.01, 0.1, 0.28, 0.35) }
+                            GradientStop { position: 1.0; color: Qt.rgba(0.01, 0.1, 0.28, 0.10) }
+                        }
+                    }
+                }
+
+                Image {
+                    id: screenMask
+                    anchors.fill: parent
+                    source: Qt.resolvedUrl("../assets/screen_mask_alpha.png")
+                    visible: false
+                    smooth: true
+                }
+
+                GE.OpacityMask {
+                    anchors.fill: parent
+                    source: ambientSource
+                    maskSource: screenMask
+                    opacity: 1.00
+                }
             }
 
             // Title Display Area right below the "TITLE" label
