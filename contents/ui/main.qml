@@ -17,14 +17,95 @@ PlasmoidItem {
 
     readonly property var player: mprisModel.currentPlayer
     readonly property bool hasMedia: !!(player && player.track && player.track.trim().length > 0 && player.playbackStatus !== Mpris.PlaybackStatus.Stopped)
-    readonly property string currentTitle: hasMedia ? player.track : ""
-    readonly property string currentArtist: (hasMedia && player.artist) ? player.artist : ""
+    readonly property bool isPlaying: player?.playbackStatus === Mpris.PlaybackStatus.Playing
+    readonly property string currentTitle: player?.track ?? ""
+    readonly property string currentArtist: player?.artist ?? ""
     readonly property string fullDisplayTitle: {
         if (!hasMedia) return ""
         if (currentArtist.length > 0) {
             return currentTitle + " - " + currentArtist
         }
         return currentTitle
+    }
+
+    // Time & Position tracking (in seconds)
+    readonly property real totalSeconds: Math.floor((player?.length ?? 0) / 1000000)
+    property real currentSeconds: Math.floor((player?.position ?? 0) / 1000000)
+
+    // Format digits for elapsed time (TIME)
+    readonly property int elapsedMins: Math.floor(currentSeconds / 60)
+    readonly property int elapsedSecs: Math.floor(currentSeconds % 60)
+    readonly property int elapsedM1: Math.floor(elapsedMins / 10) % 10
+    readonly property int elapsedM2: elapsedMins % 10
+    readonly property int elapsedS1: Math.floor(elapsedSecs / 10) % 10
+    readonly property int elapsedS2: elapsedSecs % 10
+
+    // Format digits for total duration (TOTAL)
+    readonly property int totalMins: Math.floor(totalSeconds / 60)
+    readonly property int totalSecs: Math.floor(totalSeconds % 60)
+    readonly property int totalM1: Math.floor(totalMins / 10) % 10
+    readonly property int totalM2: totalMins % 10
+    readonly property int totalS1: Math.floor(totalSecs / 10) % 10
+    readonly property int totalS2: totalSecs % 10
+
+    // 1-second position ticker during active playback
+    Timer {
+        id: positionTimer
+        interval: 1000
+        repeat: true
+        running: root.isPlaying && root.hasMedia
+        onTriggered: {
+            if (root.currentSeconds < root.totalSeconds) {
+                root.currentSeconds += 1
+            } else {
+                root.player?.updatePosition()
+            }
+        }
+    }
+
+    // Sync position when player updates or seeks
+    Connections {
+        target: root.player
+        ignoreUnknownSignals: true
+        function onPositionChanged() {
+            root.currentSeconds = Math.floor((root.player?.position ?? 0) / 1000000)
+        }
+        function onPlaybackStatusChanged() {
+            root.currentSeconds = Math.floor((root.player?.position ?? 0) / 1000000)
+        }
+        function onTrackChanged() {
+            root.currentSeconds = Math.floor((root.player?.position ?? 0) / 1000000)
+        }
+    }
+
+    // Reusable 7-Segment Large Digit (18x29px)
+    component LargeDigit: Item {
+        width: 18
+        height: 29
+        clip: true
+        property int value: 0
+
+        Image {
+            x: -Math.max(0, Math.min(9, parent.value)) * 18
+            y: 0
+            source: Qt.resolvedUrl("../assets/time_1_1.png")
+            smooth: false
+        }
+    }
+
+    // Reusable 7-Segment Small Digit (8x13px)
+    component SmallDigit: Item {
+        width: 8
+        height: 13
+        clip: true
+        property int value: 0
+
+        Image {
+            x: -Math.max(0, Math.min(9, parent.value)) * 8
+            y: 0
+            source: Qt.resolvedUrl("../assets/dtime_1.png")
+            smooth: false
+        }
     }
 
     fullRepresentation: Item {
@@ -73,7 +154,6 @@ PlasmoidItem {
 
                 x: shouldScroll ? marqueeAnimState.currentX : 0
 
-                // Reset position when song changes
                 onTextChanged: {
                     marqueeAnimState.currentX = 0
                 }
@@ -86,12 +166,10 @@ PlasmoidItem {
                         running: titleText.shouldScroll && root.hasMedia
                         loops: Animation.Infinite
 
-                        // Pause initially so the user can read the start
                         PauseAnimation {
                             duration: 1800
                         }
 
-                        // Scroll out to the left
                         NumberAnimation {
                             from: 0
                             to: -(titleText.contentWidth + 24)
@@ -99,12 +177,10 @@ PlasmoidItem {
                             easing.type: Easing.Linear
                         }
 
-                        // Reposition to the right edge
                         PropertyAction {
                             value: titleContainer.width
                         }
 
-                        // Scroll back into view
                         NumberAnimation {
                             from: titleContainer.width
                             to: 0
@@ -113,6 +189,70 @@ PlasmoidItem {
                         }
                     }
                 }
+            }
+        }
+
+        // 7-Segment Main Clock: TIME (left: 86, top: 173)
+        Item {
+            id: timeDisplay
+            x: 86
+            y: 173
+            width: 95
+            height: 29
+            visible: root.hasMedia
+
+            LargeDigit {
+                x: 18
+                value: root.elapsedM1
+            }
+            LargeDigit {
+                x: 36
+                value: root.elapsedM2
+            }
+            Image {
+                x: 50
+                source: Qt.resolvedUrl("../assets/time_sign_1.png")
+                smooth: false
+            }
+            LargeDigit {
+                x: 59
+                value: root.elapsedS1
+            }
+            LargeDigit {
+                x: 77
+                value: root.elapsedS2
+            }
+        }
+
+        // 7-Segment Total Duration Clock: TOTAL (left: 190, top: 187)
+        Item {
+            id: dtimeDisplay
+            x: 190
+            y: 187
+            width: 35
+            height: 13
+            visible: root.hasMedia
+
+            SmallDigit {
+                x: 0
+                value: root.totalM1
+            }
+            SmallDigit {
+                x: 8
+                value: root.totalM2
+            }
+            Image {
+                x: 15
+                source: Qt.resolvedUrl("../assets/dtime_sign_1.png")
+                smooth: false
+            }
+            SmallDigit {
+                x: 18
+                value: root.totalS1
+            }
+            SmallDigit {
+                x: 26
+                value: root.totalS2
             }
         }
     }
