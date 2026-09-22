@@ -87,6 +87,16 @@ PlasmoidItem {
         }
     }
 
+    function seekByOffset(deltaSecs) {
+        if (!hasMedia || totalSeconds <= 0) return;
+        const newSecs = Math.max(0, Math.min(totalSeconds, currentSeconds + deltaSecs));
+        currentSeconds = newSecs;
+        if (player) {
+            player.position = Math.round(newSecs * 1000000);
+            player.updatePosition();
+        }
+    }
+
     // 1-second position ticker during active playback
     Timer {
         id: positionTimer
@@ -477,6 +487,13 @@ PlasmoidItem {
                                 root.player.updatePosition();
                             }
                         }
+                    }
+
+                    onWheel: function(wheel) {
+                        const delta = wheel.angleDelta.y !== 0 ? wheel.angleDelta.y : wheel.angleDelta.x;
+                        if (delta === 0) return;
+                        const step = delta > 0 ? 5 : -5;
+                        root.seekByOffset(step);
                     }
 
                     onPressed: function(mouse) {
