@@ -673,6 +673,130 @@ PlasmoidItem {
                     onClicked: root.toggleMute()
                 }
             }
+
+            // --- Shuffle / Random Button (left: 305, top: 114, size: 24x25) ---
+            Item {
+                id: btnShuffle
+                x: 305
+                y: 114
+                width: 24
+                height: 25
+
+                readonly property bool isShuffleOn: root.player?.shuffle === Mpris.ShuffleStatus.On
+
+                Image {
+                    id: shuffImg
+                    anchors.fill: parent
+                    source: {
+                        // Ativo (On) -> Verde
+                        if (btnShuffle.isShuffleOn) {
+                            if (shuffMouseArea.pressed) return Qt.resolvedUrl("../assets/eq_xfade_do_2.png")
+                            return Qt.resolvedUrl("../assets/eq_xfade_hov_2.png")
+                        }
+                        // Desligado (Off) -> Azul normal
+                        if (shuffMouseArea.pressed) return Qt.resolvedUrl("../assets/eq_xfade_do_1.png")
+                        if (shuffMouseArea.containsMouse) return Qt.resolvedUrl("../assets/eq_xfade_hov_1.png")
+                        return Qt.resolvedUrl("../assets/eq_xfade_no_1.png")
+                    }
+                    smooth: true
+
+                    transform: [
+                        Translate {
+                            y: shuffMouseArea.pressed ? 1.5 : 0
+                            Behavior on y { NumberAnimation { duration: 60 } }
+                        },
+                        Scale {
+                            origin.x: 12
+                            origin.y: 12
+                            xScale: shuffMouseArea.pressed ? 0.96 : 1.0
+                            yScale: shuffMouseArea.pressed ? 0.96 : 1.0
+                            Behavior on xScale { NumberAnimation { duration: 60 } }
+                            Behavior on yScale { NumberAnimation { duration: 60 } }
+                        }
+                    ]
+                }
+
+                MouseArea {
+                    id: shuffMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (!root.player) return;
+                        if (btnShuffle.isShuffleOn) {
+                            root.player.shuffle = Mpris.ShuffleStatus.Off;
+                        } else {
+                            root.player.shuffle = Mpris.ShuffleStatus.On;
+                        }
+                    }
+                }
+            }
+
+            // --- Repeat / Loop Button (left: 294, top: 139, size: 24x25) ---
+            Item {
+                id: btnRepeat
+                x: 294
+                y: 139
+                width: 24
+                height: 25
+
+                // 3 stages: None (Desligado = 2 Setas Azul), Playlist (Infinito = 2 Setas Verde), Track (Repeat 1 = 1 Seta Verde)
+                readonly property int loopState: root.player ? root.player.loopStatus : Mpris.LoopStatus.None
+
+                Image {
+                    id: repImg
+                    anchors.fill: parent
+                    source: {
+                        // Estágio: Repeat 1 (Track) -> Ícone de 1 Seta/Loop (pl_rip) Verde!
+                        if (btnRepeat.loopState === Mpris.LoopStatus.Track) {
+                            if (repMouseArea.pressed) return Qt.resolvedUrl("../assets/pl_rip_do_2.png")
+                            return Qt.resolvedUrl("../assets/pl_rip_hov_2.png")
+                        }
+                        // Estágio: Repeat Infinito (Playlist) -> Ícone de 2 Setas (pl_rep) Verde!
+                        if (btnRepeat.loopState === Mpris.LoopStatus.Playlist) {
+                            if (repMouseArea.pressed) return Qt.resolvedUrl("../assets/pl_rep_do_2.png")
+                            return Qt.resolvedUrl("../assets/pl_rep_hov_2.png")
+                        }
+                        // Estágio: Desligado (None) -> Ícone de 2 Setas Azul Normal
+                        if (repMouseArea.pressed) return Qt.resolvedUrl("../assets/pl_rep_do_1.png")
+                        if (repMouseArea.containsMouse) return Qt.resolvedUrl("../assets/pl_rep_hov_1.png")
+                        return Qt.resolvedUrl("../assets/pl_rep_no_1.png")
+                    }
+                    smooth: true
+
+                    transform: [
+                        Translate {
+                            y: repMouseArea.pressed ? 1.5 : 0
+                            Behavior on y { NumberAnimation { duration: 60 } }
+                        },
+                        Scale {
+                            origin.x: 12
+                            origin.y: 12
+                            xScale: repMouseArea.pressed ? 0.96 : 1.0
+                            yScale: repMouseArea.pressed ? 0.96 : 1.0
+                            Behavior on xScale { NumberAnimation { duration: 60 } }
+                            Behavior on yScale { NumberAnimation { duration: 60 } }
+                        }
+                    ]
+                }
+
+                MouseArea {
+                    id: repMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (!root.player) return;
+                        if (btnRepeat.loopState === Mpris.LoopStatus.None) {
+                            root.player.loopStatus = Mpris.LoopStatus.Playlist; // Passa para Verde (Repeat Infinito - 2 setas)
+                        } else if (btnRepeat.loopState === Mpris.LoopStatus.Playlist) {
+                            root.player.loopStatus = Mpris.LoopStatus.Track; // Passa para Verde (Repeat 1 - 1 loop)
+                        } else {
+                            root.player.loopStatus = Mpris.LoopStatus.None; // Volta para Azul Normal (Desligado)
+                        }
+                    }
+                }
+            }
         }
     }
 }
