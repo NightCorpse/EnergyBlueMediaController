@@ -255,5 +255,94 @@ PlasmoidItem {
                 value: root.totalS2
             }
         }
+
+        // Seekbar / Timeline (left: 70, top: 234, width: 175, height: 20)
+        Item {
+            id: seekContainer
+            x: 70
+            y: 234
+            width: 175
+            height: 20
+            visible: root.hasMedia
+
+            // Green progress fill: clipped dynamically to thumb position
+            Item {
+                id: seekFillClip
+                x: 0
+                y: 0
+                height: 20
+                width: seekThumb.x > 0 ? Math.min(175, seekThumb.x + 22) : 0
+                clip: true
+
+                Image {
+                    x: 0
+                    y: 0
+                    width: 175
+                    height: 20
+                    source: Qt.resolvedUrl("../assets/seek_slider_1.png")
+                    smooth: true
+                }
+            }
+
+            // Slider thumb (width: 44, height: 20)
+            Image {
+                id: seekThumb
+                x: seekMouseArea.pressed ? x : (root.totalSeconds > 0 ? Math.round((root.currentSeconds / root.totalSeconds) * 131) : 0)
+                y: 0
+                width: 44
+                height: 20
+                source: {
+                    if (seekMouseArea.pressed) {
+                        return Qt.resolvedUrl("../assets/seek_thumb_do_1.png")
+                    }
+                    if (seekMouseArea.containsMouse) {
+                        return Qt.resolvedUrl("../assets/seek_thumb_hov_1.png")
+                    }
+                    return Qt.resolvedUrl("../assets/seek_thumb_no_1.png")
+                }
+                smooth: true
+            }
+
+            // Interactive seek MouseArea
+            MouseArea {
+                id: seekMouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: pressed ? Qt.ClosedHandCursor : (containsMouse ? Qt.PointingHandCursor : Qt.ArrowCursor)
+
+                drag.target: seekThumb
+                drag.axis: Drag.XAxis
+                drag.minimumX: 0
+                drag.maximumX: 131
+
+                function seekTo(targetMouseX) {
+                    const clampedX = Math.max(0, Math.min(131, targetMouseX - 22));
+                    seekThumb.x = clampedX;
+                    if (root.totalSeconds > 0) {
+                        const ratio = clampedX / 131.0;
+                        const newSecs = ratio * root.totalSeconds;
+                        root.currentSeconds = newSecs;
+                        if (root.player) {
+                            root.player.position = Math.round(newSecs * 1000000);
+                            root.player.updatePosition();
+                        }
+                    }
+                }
+
+                onPressed: function(mouse) {
+                    seekTo(mouse.x);
+                }
+
+                onPositionChanged: function(mouse) {
+                    if (pressed) {
+                        seekTo(mouse.x);
+                    }
+                }
+
+                onReleased: function(mouse) {
+                    seekTo(mouse.x);
+                }
+            }
+        }
     }
 }
