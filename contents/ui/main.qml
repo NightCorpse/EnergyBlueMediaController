@@ -87,6 +87,10 @@ PlasmoidItem {
         }
     }
 
+    // Seeking state (declared at root scope so it is always accessible everywhere)
+    property bool isSeeking: false
+    property real manualSeekRatio: 0.0
+
     function seekByOffset(deltaSecs) {
         if (!hasMedia || totalSeconds <= 0) return;
         const newSecs = Math.max(0, Math.min(totalSeconds, currentSeconds + deltaSecs));
@@ -97,17 +101,41 @@ PlasmoidItem {
         }
     }
 
-    // 1-second position ticker during active playback
+    // Sync position when player updates or seeks
+    onCurrentTitleChanged: {
+        root.isSeeking = false;
+        currentSeconds = 0;
+        if (player) {
+            player.updatePosition();
+        }
+        trackSyncTimer.restart();
+    }
+
+    Timer {
+        id: trackSyncTimer
+        interval: 300
+        repeat: false
+        onTriggered: {
+            if (root.player) {
+                root.player.updatePosition();
+            }
+        }
+    }
+
+    // 1-second position ticker during active playback with periodic anti-drift sync
+    property int tickerCycles: 0
     Timer {
         id: positionTimer
         interval: 1000
         repeat: true
-        running: root.isPlaying && root.hasMedia
+        running: root.isPlaying && root.hasMedia && !root.isSeeking
         onTriggered: {
+            root.tickerCycles++;
+            if (root.tickerCycles % 4 === 0) {
+                root.player?.updatePosition();
+            }
             if (root.currentSeconds < root.totalSeconds) {
-                root.currentSeconds += 1
-            } else {
-                root.player?.updatePosition()
+                root.currentSeconds += 1;
             }
         }
     }
@@ -117,13 +145,21 @@ PlasmoidItem {
         target: root.player
         ignoreUnknownSignals: true
         function onPositionChanged() {
-            root.currentSeconds = Math.floor((root.player?.position ?? 0) / 1000000)
+            if (!root.isSeeking) {
+                root.currentSeconds = Math.floor((root.player?.position ?? 0) / 1000000);
+            }
         }
         function onPlaybackStatusChanged() {
-            root.currentSeconds = Math.floor((root.player?.position ?? 0) / 1000000)
+            if (!root.isSeeking) {
+                root.currentSeconds = Math.floor((root.player?.position ?? 0) / 1000000);
+            }
         }
         function onTrackChanged() {
-            root.currentSeconds = Math.floor((root.player?.position ?? 0) / 1000000)
+            root.isSeeking = false;
+            trackSyncTimer.restart();
+        }
+        function onLengthChanged() {
+            trackSyncTimer.restart();
         }
     }
 
@@ -453,12 +489,14 @@ PlasmoidItem {
                 // Slider thumb (width: 44, height: 20)
                 Image {
                     id: seekThumb
-                    x: seekMouseArea.pressed ? x : (root.totalSeconds > 0 ? Math.round((root.currentSeconds / root.totalSeconds) * 131) : 0)
+                    x: root.isSeeking
+                        ? Math.round(root.manualSeekRatio * 131)
+                        : (root.totalSeconds > 0 ? Math.round(Math.min(1.0, Math.max(0.0, root.currentSeconds / root.totalSeconds)) * 131) : 0)
                     y: 0
                     width: 44
                     height: 20
                     source: {
-                        if (seekMouseArea.pressed) {
+                        if (root.isSeeking) {
                             return Qt.resolvedUrl("../assets/seek_thumb_do_1.png")
                         }
                         if (seekMouseArea.containsMouse) {
@@ -475,25 +513,47 @@ PlasmoidItem {
                     id: seekMouseArea
                     anchors.fill: parent
                     hoverEnabled: true
-                    cursorShape: pressed ? Qt.ClosedHandCursor : (containsMouse ? Qt.PointingHandCursor : Qt.ArrowCursor)
+                    preventStealing: true
+                    cursorShape: root.isSeeking ? Qt.ClosedHandCursor : (containsMouse ? Qt.PointingHandCursor : Qt.ArrowCursor)
 
-                    drag.target: seekThumb
-                    drag.axis: Drag.XAxis
-                    drag.minimumX: 0
-                    drag.maximumX: 131
-
-                    function seekTo(targetMouseX) {
-                        const clampedX = Math.max(0, Math.min(131, targetMouseX - 22));
-                        seekThumb.x = clampedX;
+                    function updateManualPosition(mouseX) {
+                        const clampedPixel = Math.max(0, Math.min(131, mouseX - 22));
+                        root.manualSeekRatio = clampedPixel / 131.0;
                         if (root.totalSeconds > 0) {
-                            const ratio = clampedX / 131.0;
-                            const newSecs = ratio * root.totalSeconds;
-                            root.currentSeconds = newSecs;
-                            if (root.player) {
-                                root.player.position = Math.round(newSecs * 1000000);
-                                root.player.updatePosition();
-                            }
+                            root.currentSeconds = root.manualSeekRatio * root.totalSeconds;
                         }
+                    }
+
+                    function commitSeek() {
+                        if (root.totalSeconds > 0 && root.player) {
+                            const newSecs = root.manualSeekRatio * root.totalSeconds;
+                            root.currentSeconds = newSecs;
+                            root.player.position = Math.round(newSecs * 1000000);
+                            root.player.updatePosition();
+                        }
+                    }
+
+                    onPressed: function(mouse) {
+                        root.isSeeking = true;
+                        updateManualPosition(mouse.x);
+                    }
+
+                    onPositionChanged: function(mouse) {
+                        if (root.isSeeking) {
+                            updateManualPosition(mouse.x);
+                        }
+                    }
+
+                    onReleased: function(mouse) {
+                        if (root.isSeeking) {
+                            updateManualPosition(mouse.x);
+                            commitSeek();
+                            root.isSeeking = false;
+                        }
+                    }
+
+                    onCanceled: {
+                        root.isSeeking = false;
                     }
 
                     onWheel: function(wheel) {
@@ -501,20 +561,6 @@ PlasmoidItem {
                         if (delta === 0) return;
                         const step = delta > 0 ? 5 : -5;
                         root.seekByOffset(step);
-                    }
-
-                    onPressed: function(mouse) {
-                        seekTo(mouse.x);
-                    }
-
-                    onPositionChanged: function(mouse) {
-                        if (pressed) {
-                            seekTo(mouse.x);
-                        }
-                    }
-
-                    onReleased: function(mouse) {
-                        seekTo(mouse.x);
                     }
                 }
             }
@@ -618,6 +664,7 @@ PlasmoidItem {
                     id: knobMouseArea
                     anchors.fill: parent
                     hoverEnabled: true
+                    preventStealing: true
                     cursorShape: Qt.SizeVerCursor
 
                     property real startY: 0
