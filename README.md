@@ -7,6 +7,7 @@
 **Skeuomorphic Frutiger Aero media controller widget for KDE Plasma 6.**
 
 [![KDE Plasma](https://img.shields.io/badge/KDE_Plasma-6.0+-blue?style=flat&logo=kde&logoColor=white)](https://kde.org/plasma-desktop/)
+[![KDE Store](https://img.shields.io/badge/KDE_Store-Energy_Blue-1d99f3?style=flat&logo=kde&logoColor=white)](https://store.kde.org/p/2373784)
 [![Qt](https://img.shields.io/badge/Qt-6-green?style=flat&logo=qt&logoColor=white)](https://www.qt.io/)
 [![Protocol](https://img.shields.io/badge/Protocol-MPRIS2-orange?style=flat)](https://specifications.freedesktop.org/mpris-spec/latest/)
 [![License](https://img.shields.io/badge/License-GPL--3.0-blue.svg?style=flat)](LICENSE)
