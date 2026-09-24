@@ -11,7 +11,6 @@ PlasmoidItem {
     preferredRepresentation: fullRepresentation
     Plasmoid.backgroundHints: PlasmaCore.Types.NoBackground
 
-    // MPRIS Data Model from KDE Plasma
     Mpris.Mpris2Model {
         id: mprisModel
     }
@@ -30,11 +29,9 @@ PlasmoidItem {
         return currentTitle
     }
 
-    // Time & Position tracking (in seconds)
     readonly property real totalSeconds: Math.floor((player?.length ?? 0) / 1000000)
     property real currentSeconds: Math.floor((player?.position ?? 0) / 1000000)
 
-    // Format digits for elapsed time (TIME)
     readonly property int elapsedMins: Math.floor(currentSeconds / 60)
     readonly property int elapsedSecs: Math.floor(currentSeconds % 60)
     readonly property int elapsedM1: Math.floor(elapsedMins / 10) % 10
@@ -42,7 +39,6 @@ PlasmoidItem {
     readonly property int elapsedS1: Math.floor(elapsedSecs / 10) % 10
     readonly property int elapsedS2: elapsedSecs % 10
 
-    // Format digits for total duration (TOTAL)
     readonly property int totalMins: Math.floor(totalSeconds / 60)
     readonly property int totalSecs: Math.floor(totalSeconds % 60)
     readonly property int totalM1: Math.floor(totalMins / 10) % 10
@@ -50,7 +46,6 @@ PlasmoidItem {
     readonly property int totalS1: Math.floor(totalSecs / 10) % 10
     readonly property int totalS2: totalSecs % 10
 
-    // Volume & Mute State
     property bool isMuted: false
     property real savedVolume: 0.7
     readonly property real playerVolume: player ? Math.max(0.0, Math.min(1.0, player.volume)) : 0.7
@@ -87,7 +82,7 @@ PlasmoidItem {
         }
     }
 
-    // Seeking state (declared at root scope so it is always accessible everywhere)
+    // Root-level seek state to ensure cross-scope accessibility and prevent binding loss
     property bool isSeeking: false
     property real manualSeekRatio: 0.0
 
@@ -101,7 +96,6 @@ PlasmoidItem {
         }
     }
 
-    // Sync position when player updates or seeks
     onCurrentTitleChanged: {
         root.isSeeking = false;
         currentSeconds = 0;
@@ -122,7 +116,7 @@ PlasmoidItem {
         }
     }
 
-    // 1-second position ticker during active playback with periodic anti-drift sync
+    // 1-second ticker with periodic MPRIS position synchronization
     property int tickerCycles: 0
     Timer {
         id: positionTimer
@@ -140,7 +134,6 @@ PlasmoidItem {
         }
     }
 
-    // Sync position when player updates or seeks
     Connections {
         target: root.player
         ignoreUnknownSignals: true
@@ -163,7 +156,7 @@ PlasmoidItem {
         }
     }
 
-    // Reusable 7-Segment Large Digit (18x29px)
+    // 7-segment large digit (18x29px)
     component LargeDigit: Item {
         width: 18
         height: 29
@@ -178,7 +171,7 @@ PlasmoidItem {
         }
     }
 
-    // Reusable 7-Segment Small Digit (8x13px)
+    // 7-segment small digit (8x13px)
     component SmallDigit: Item {
         width: 8
         height: 13
@@ -193,7 +186,7 @@ PlasmoidItem {
         }
     }
 
-    // Reusable Skeuomorphic Bubble Button (42x39px)
+    // Skeuomorphic bubble button (42x39px)
     component BubbleButton: Item {
         id: bubbleBtn
         width: 42
@@ -260,7 +253,7 @@ PlasmoidItem {
 
         readonly property real scaleFactor: Math.min(width / 423, height / 381)
 
-        // Root container of the 423x381 physical MP3 gadget
+        // Base 423x381 physical chassis container with proportional scaling
         Item {
             id: widgetContainer
             anchors.centerIn: parent
@@ -269,7 +262,6 @@ PlasmoidItem {
             scale: fullRep.scaleFactor
             transformOrigin: Item.Center
 
-            // Base Chassis (Carcaça)
             Image {
                 id: deviceBody
                 anchors.fill: parent
@@ -279,7 +271,7 @@ PlasmoidItem {
                 mipmap: true
             }
 
-            // Ambient Glass Album Art (Curved glass integration with mask)
+            // Ambient glass album art masked to curved LCD viewport
             Item {
                 id: ambientScreenArea
                 x: 66
@@ -302,7 +294,7 @@ PlasmoidItem {
                         asynchronous: true
                     }
 
-                    // Contrast gradient over bottom-left to protect TITLE and 7-segment clock
+                    // Contrast gradient to ensure title and digit readability
                     Rectangle {
                         anchors.fill: parent
                         gradient: Gradient {
@@ -330,7 +322,7 @@ PlasmoidItem {
                 }
             }
 
-            // Title Display Area right below the "TITLE" label
+            // Track title display area
             Item {
                 id: titleContainer
                 x: 93
@@ -393,7 +385,7 @@ PlasmoidItem {
                 }
             }
 
-            // 7-Segment Main Clock: TIME (left: 86, top: 173)
+            // Elapsed time display (TIME)
             Item {
                 id: timeDisplay
                 x: 86
@@ -425,7 +417,7 @@ PlasmoidItem {
                 }
             }
 
-            // 7-Segment Total Duration Clock: TOTAL (left: 190, top: 187)
+            // Total duration display (TOTAL)
             Item {
                 id: dtimeDisplay
                 x: 190
@@ -457,7 +449,7 @@ PlasmoidItem {
                 }
             }
 
-            // Seekbar / Timeline (left: 70, top: 234, width: 175, height: 20)
+            // Timeline seekbar
             Item {
                 id: seekContainer
                 x: 70
@@ -466,7 +458,7 @@ PlasmoidItem {
                 height: 20
                 visible: root.hasMedia
 
-                // Green progress fill: clipped dynamically to thumb position
+                // Progress fill clipped dynamically to slider thumb position
                 Item {
                     id: seekFillClip
                     x: 0
@@ -486,7 +478,7 @@ PlasmoidItem {
                     }
                 }
 
-                // Slider thumb (width: 44, height: 20)
+                // Slider thumb (44x20px)
                 Image {
                     id: seekThumb
                     x: root.isSeeking
@@ -508,7 +500,6 @@ PlasmoidItem {
                     mipmap: true
                 }
 
-                // Interactive seek MouseArea
                 MouseArea {
                     id: seekMouseArea
                     anchors.fill: parent
@@ -565,9 +556,7 @@ PlasmoidItem {
                 }
             }
 
-            // --- The 4 Skeuomorphic Bubble Bottom Buttons (y: 262) ---
-
-            // 1. Play / Pause Button (left: 73, top: 262)
+            // Transport bubble buttons
             BubbleButton {
                 id: btnPlayPause
                 x: 73
@@ -590,7 +579,6 @@ PlasmoidItem {
                 }
             }
 
-            // 2. Stop Button (left: 119, top: 262)
             BubbleButton {
                 id: btnStop
                 x: 119
@@ -607,7 +595,6 @@ PlasmoidItem {
                 }
             }
 
-            // 3. Previous Track Button (left: 165, top: 262)
             BubbleButton {
                 id: btnPrev
                 x: 165
@@ -624,7 +611,6 @@ PlasmoidItem {
                 }
             }
 
-            // 4. Next Track Button (left: 211, top: 262)
             BubbleButton {
                 id: btnNext
                 x: 211
@@ -641,7 +627,7 @@ PlasmoidItem {
                 }
             }
 
-            // --- Rotary Volume Knob (left: 255, top: 209, size: 76x76) ---
+            // Rotary volume knob (21-frame spritesheet)
             Item {
                 id: volumeKnob
                 x: 255
@@ -695,7 +681,7 @@ PlasmoidItem {
                 }
             }
 
-            // --- Mute Button (left: 319, top: 192, size: 29x29) ---
+            // Mute toggle button
             Item {
                 id: btnMute
                 x: 319
@@ -746,7 +732,7 @@ PlasmoidItem {
                 }
             }
 
-            // --- Shuffle / Random Button (left: 305, top: 114, size: 24x25) ---
+            // Shuffle button
             Item {
                 id: btnShuffle
                 x: 305
@@ -760,12 +746,10 @@ PlasmoidItem {
                     id: shuffImg
                     anchors.fill: parent
                     source: {
-                        // Ativo (On) -> Verde
                         if (btnShuffle.isShuffleOn) {
                             if (shuffMouseArea.pressed) return Qt.resolvedUrl("../assets/eq_xfade_do_2.png")
                             return Qt.resolvedUrl("../assets/eq_xfade_hov_2.png")
                         }
-                        // Desligado (Off) -> Azul normal
                         if (shuffMouseArea.pressed) return Qt.resolvedUrl("../assets/eq_xfade_do_1.png")
                         if (shuffMouseArea.containsMouse) return Qt.resolvedUrl("../assets/eq_xfade_hov_1.png")
                         return Qt.resolvedUrl("../assets/eq_xfade_no_1.png")
@@ -805,7 +789,7 @@ PlasmoidItem {
                 }
             }
 
-            // --- Repeat / Loop Button (left: 294, top: 139, size: 24x25) ---
+            // Repeat button (None -> Playlist -> Track)
             Item {
                 id: btnRepeat
                 x: 294
@@ -813,24 +797,20 @@ PlasmoidItem {
                 width: 24
                 height: 25
 
-                // 3 stages: None (Desligado = 2 Setas Azul), Playlist (Infinito = 2 Setas Verde), Track (Repeat 1 = 1 Seta Verde)
                 readonly property int loopState: root.player ? root.player.loopStatus : Mpris.LoopStatus.None
 
                 Image {
                     id: repImg
                     anchors.fill: parent
                     source: {
-                        // Estágio: Repeat 1 (Track) -> Ícone de 1 Seta/Loop (pl_rip) Verde!
                         if (btnRepeat.loopState === Mpris.LoopStatus.Track) {
                             if (repMouseArea.pressed) return Qt.resolvedUrl("../assets/pl_rip_do_2.png")
                             return Qt.resolvedUrl("../assets/pl_rip_hov_2.png")
                         }
-                        // Estágio: Repeat Infinito (Playlist) -> Ícone de 2 Setas (pl_rep) Verde!
                         if (btnRepeat.loopState === Mpris.LoopStatus.Playlist) {
                             if (repMouseArea.pressed) return Qt.resolvedUrl("../assets/pl_rep_do_2.png")
                             return Qt.resolvedUrl("../assets/pl_rep_hov_2.png")
                         }
-                        // Estágio: Desligado (None) -> Ícone de 2 Setas Azul Normal
                         if (repMouseArea.pressed) return Qt.resolvedUrl("../assets/pl_rep_do_1.png")
                         if (repMouseArea.containsMouse) return Qt.resolvedUrl("../assets/pl_rep_hov_1.png")
                         return Qt.resolvedUrl("../assets/pl_rep_no_1.png")
@@ -862,11 +842,11 @@ PlasmoidItem {
                     onClicked: {
                         if (!root.player) return;
                         if (btnRepeat.loopState === Mpris.LoopStatus.None) {
-                            root.player.loopStatus = Mpris.LoopStatus.Playlist; // Passa para Verde (Repeat Infinito - 2 setas)
+                            root.player.loopStatus = Mpris.LoopStatus.Playlist;
                         } else if (btnRepeat.loopState === Mpris.LoopStatus.Playlist) {
-                            root.player.loopStatus = Mpris.LoopStatus.Track; // Passa para Verde (Repeat 1 - 1 loop)
+                            root.player.loopStatus = Mpris.LoopStatus.Track;
                         } else {
-                            root.player.loopStatus = Mpris.LoopStatus.None; // Volta para Azul Normal (Desligado)
+                            root.player.loopStatus = Mpris.LoopStatus.None;
                         }
                     }
                 }
