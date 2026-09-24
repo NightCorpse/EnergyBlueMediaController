@@ -8,13 +8,13 @@
             }
         ],
         "Category": "Multimedia",
-        "Description": "Skeuomorphic Frutiger Aero MP3 player widget for KDE Plasma",
+        "Description": "Skeuomorphic Frutiger Aero media controller for KDE Plasma 6, built on the classic 2004 Energy Blue Windows Media Player skin.",
         "Icon": "multimedia-player",
-        "Id": "org.kde.plasma.mp3widget",
+        "Id": "org.nightcorpse.energyblue",
         "License": "GPL-3.0+",
-        "Name": "MP3 Widget",
+        "Name": "Energy Blue Media Controller",
         "Version": "1.0.0",
-        "Website": "https://github.com/nightcorpse/MP3Widget"
+        "Website": "https://github.com/nightcorpse/EnergyBlueMediaController"
     },
     "X-Plasma-API-Minimum-Version": "6.0",
     "X-Plasma-MainScript": "ui/main.qml"
